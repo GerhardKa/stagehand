@@ -5,15 +5,15 @@
     align(center, box(width: 70%)[
       #block(spacing: (0.0em))[
         #align(left)[
-          #par(justify: true, spacing: 0.0em)[
-            #text(style: "italic", gray)[#body]
+          #par(justify: true, spacing: 0.0em, hanging-indent: 0em)[
+            #body #label("_stage-direction")
             ]
           ]
         ]
       ]
     )
   } else {
-    text(style: "italic", gray)[#body]
+    [#body #label("_stage-direction")]
   }
 }
 
@@ -45,8 +45,17 @@
   }
 }
 
+#let longest-speaker() = {
+  query(selector(<speaker>))
+    .map(s => to-string(s))
+    .fold("", (longest, current) =>
+      if current.len() > longest.len() { current } else { longest }
+    )
+    
+}
+
 #let stagehand(
-  lang:"en",
+  lang: "en",
   title: none,
   descriptor: none,
   authors: none,
@@ -61,6 +70,7 @@
   speaker-function: smallcaps,
   break-size: 900,
   parentheses-mean-stage-directions: true,
+  stage-direction-color: gray,
   has-header:true,
   has-footer: true,
   speakers-in-header: true,
@@ -71,11 +81,15 @@
   ),
   play
 ) = {
-  assert(speaker-layout in ("fancy", "concise"),
-  message: "speaker-layout must be fancy or concise")
+  assert(speaker-layout in ("fancy", "concise", "blockage"),
+  message: "speaker-layout must be fancy, concise or blockage")
   assert(
     type(custom-localization) == dictionary or custom-localization == none,
     message: "A custom localization must be a dictionary or 'none'")
+  assert(
+    type(stage-direction-color) == color,
+    message: "Stage direction color must be of type 'color' "
+  )
 
   let title-case(string) = {
     return string.replace(
@@ -84,9 +98,12 @@
     )
   }
 
+  show <_stage-direction>: set text(style: "italic", stage-direction-color)
+
   let fallback_dicionary = (
     w-and: "and",
     w-by: "by",
+    w-of: "of",
     prop-title: "Props",
     todo-title: "TODOs",
     dramatis-personae-title: "Dramatis Personae",
@@ -96,10 +113,11 @@
   )
 
   let primary_dictionary = {
-    if lang == "de" {
+    if lower(lang) == "de" {
       (
         w-and: "und",
         w-by: "von",
+        w-of: "von",
         prop-title: "Requisiten",
         todo-title: "TODOs",
         dramatis-personae-title: "Figuren",
@@ -107,10 +125,11 @@
         scene-title: "Szene",
         appendix-title: "Anhang"
       )
-    } else if lang == "it" {
+    } else if lower(lang) == "it" {
       (
         w-and: "e",
         w-by: "di",
+        w-of: "di",
         prop-title: "Oggetti di scena",
         todo-title: "TODOs",
         dramatis-personae-title: "Personaggi",
@@ -118,7 +137,19 @@
         scene-title: "Scena",
         appendix-title: "Appendice",
       )
-    } else if lang == "en" {
+    } else if lower(lang) == "es" {
+      (
+        w-and: "y",
+        w-by: "por",
+        w-of: "de",
+        prop-title: "Utilería",
+        todo-title: "TODOs",
+        dramatis-personae-title: "Personajes",
+        act-title: "Acto",
+        scene-title: "Escena",
+        appendix-title: "Apéndice",
+      )
+    } else if lower(lang) == "en" {
       fallback_dicionary
     } else {
       fallback_dicionary
@@ -173,7 +204,7 @@
         ]
         align(
           center,
-          counter(page).display((a, b) => [#a von #b], both:true)
+          counter(page).display((a, b) => [#a #localization("w-of") #b], both:true)
         )
       }
     },
@@ -190,7 +221,7 @@
             if speakers-in-header {
               pad(bottom:-8pt,
                 align(center + top,
-                  par(justify: false,
+                  par(justify: false, hanging-indent: 0em,
                     text(size: 11pt, hyphenate:false, {
                       let end_scene
                       let start_scene
@@ -267,9 +298,20 @@
         )
       ]
     } else if speaker-layout == "concise"{
-      speaker-function[
+        speaker-function[
 
-        #it:]
+          #it:]
+    } else if speaker-layout == "blockage"{
+        let indent-width = calc.min(
+          12em.to-absolute(),  (measure(
+          speaker-function[#longest-speaker():]
+        ).width + 1em).to-absolute()
+        ) - measure(speaker-function[#it:]
+        ).width - measure([:]).width
+
+        speaker-function[
+
+          #it:#h(indent-width)]
     }
   }
 
@@ -280,7 +322,7 @@
           #stage-direction(blocked: false)[(#it)]
         ]
       ]
-    } else if speaker-layout == "concise" {
+    } else if speaker-layout == "concise" or speaker-layout == "blockage"{
       stage-direction(blocked: false)[(#it)]
     }
   }
@@ -427,7 +469,20 @@
   }
 
   [#v(0pt)<start_of_play>]
-  play
+
+  context {
+    let indent-width = (measure(
+      speaker-function[#longest-speaker():]
+    ).width + 1em).to-absolute()
+    
+    set par(
+      justify: true,
+      linebreaks: "optimized",
+      hanging-indent: if speaker-layout == "blockage" { calc.min(12em.to-absolute(), indent-width) } else { 0em },
+    )
+
+    play
+  }
 
   [#v(0pt)<end_of_play>]
   set page(header: none, footer: none)
