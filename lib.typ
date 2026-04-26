@@ -461,12 +461,16 @@
         }
       }
       if todos {
+      //todos-list.map(it => link(it.location(), to-string(it))).join("\n")
         if todos-list.len() > 0 [
-          == #localization("todo-title"):
-          #{
-            todos-list.map(it => link(it.location())[#it]).join("\n")
-          }
-        ]
+            == #localization("todo-title"):
+            #{
+              todos-list.map(it => [#link(it.location(), to-string(it))
+              #box(width: 1fr)[#line(length: 100%, stroke: (dash: "loosely-dotted"))]
+              #numbering("1", counter(page).at(it.location()).first())
+            ]).join("\n") + "\n"
+            }
+          ]
       }
     }
   }
