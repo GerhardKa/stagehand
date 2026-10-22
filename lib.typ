@@ -1,12 +1,16 @@
 #let _description-state = state("description-state", ().to-dict() )
 
+#let on-stage = state("on-stage", ().to-dict())
+
+
+
 #let stage-direction(blocked: true, body) = {
   if blocked {
-    align(center, box(width: 70%)[
+    align(left, box(width: 90%)[
       #block(spacing: (0.0em))[
         #align(left)[
-          #par(justify: true, spacing: 0.0em, hanging-indent: 0em)[
-            #body #label("_stage-direction")
+          #par(justify: true, spacing: 0.0em)[
+            #h(10em)#body #label("_stage-direction")
             ]
           ]
         ]
@@ -16,6 +20,18 @@
     [#body #label("_stage-direction")]
   }
 }
+
+#let currently-on-stage() = context[
+  #stage-direction[
+  Bereits auf der Bühne:
+  #{on-stage.get().pairs()
+    .filter(pair => pair.at(1))
+    .map(pair => pair.at(0))
+    .join(", ", last: " und ", default: "Niemand.")}
+    \
+    \
+  ]
+]
 
 #let descriptions(..roles) = {
   let all-descriptions = ().to-dict()
@@ -67,6 +83,7 @@
   todos: true,
 
   speaker-layout:"fancy",
+  blockage-indent: 10em,
   speaker-function: smallcaps,
   break-size: 900,
   parentheses-mean-stage-directions: true,
@@ -248,13 +265,30 @@
                       if start_scene == none {
                         start_scene = query(<start_of_play>).first()
                       }
-                      query(selector(<tagged_speaker>)
+                      let tagged-speakers = query(selector(<tagged_speaker>)
                         .after(start_scene.location())
                         .before(end_scene.location()))
                         .map(s => s.value)
                         .flatten()
                         .map(s => to-string(s))
-                        .dedup().join(", ")
+                        .dedup()
+                      tagged-speakers.join(", ")
+                      let silent-speakers = query(selector(<silent_speaker>)
+                        .after(start_scene.location())
+                        .before(end_scene.location()))
+                        .map(s => s.value)
+                        .flatten()
+                        .map(s => to-string(s))
+                        .filter(s => s not in tagged-speakers)
+                        .dedup()
+                      silent-speakers += on-stage.at(start_scene.location())
+                        .pairs()
+                        .filter(pair => pair.at(1))
+                        .map(pair => pair.at(0))
+                        .filter(role => role not in tagged-speakers + silent-speakers)
+                      if silent-speakers.len() > 0 [,
+                       (#silent-speakers.join(", "))
+                      ]
                     })
                   )
                 )
@@ -303,7 +337,7 @@
           #it:]
     } else if speaker-layout == "blockage"{
         let indent-width = calc.min(
-          12em.to-absolute(),  (measure(
+          blockage-indent.to-absolute(),  (measure(
           speaker-function[#longest-speaker():]
         ).width + 1em).to-absolute()
         ) - measure(speaker-function[#it:]
@@ -311,7 +345,7 @@
 
         speaker-function[
 
-          #it:#h(indent-width)]
+          #it:#h(calc.max(indent-width, 0pt))]
     }
   }
 
@@ -468,6 +502,8 @@
     block(breakable: characters > break-size)[#it]
   }
 
+  show align.where(alignment: center): set text(size:20pt)
+
   [#v(0pt)<start_of_play>]
 
   context {
@@ -478,7 +514,7 @@
     set par(
       justify: true,
       linebreaks: "optimized",
-      hanging-indent: if speaker-layout == "blockage" { calc.min(12em.to-absolute(), indent-width) } else { 0em },
+      hanging-indent: if speaker-layout == "blockage" { calc.min(blockage-indent.to-absolute(), indent-width) } else { 0em },
     )
 
     play
