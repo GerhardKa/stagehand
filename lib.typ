@@ -127,7 +127,7 @@
   props: true,
   todos: true,
 
-  speaker-layout:"fancy",
+  speaker-layout:"blockage",
   blockage-indent: 10em,
   speaker-function: smallcaps,
   break-size: 900,
