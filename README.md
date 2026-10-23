@@ -5,7 +5,7 @@ A typst template for easily creating pretty and legible theatre scripts meant fo
 If you just want to get started with the default values, simply init a new typst document with this template.
 From the webapp, choose this template when starting a new project, from the CLI, use 
 ```bash
-typst init @preview/stagehand:0.1.0
+typst init @preview/stagehand:0.1.1
 ```
 Read the template text to learn the basic syntax, and you're good to go!
 For a basic script, you need to write nothing but 
@@ -18,17 +18,23 @@ I recommend setting aliases for recurring characters, and to use shorter, altern
 
 Alternatively, add this to the start of your typst file:
 ```typ
-#import "@preview/stagehand:0.1.0":*
+#import "@preview/stagehand:0.1.1":*
 #show: stagehand
 ```
 
 ## Features
 ### Layouts
-Two different layouts: "fancy" 
+Three different layouts:
+
+"Blockage":
+
+![Blockage layout](docs/stagehand_blockage.png)
+
+"fancy":
 
 ![Fancy layout](docs/stagehand_fancy.png)
 
-and "concise"
+and "concise":
 
 ![Concise layout](docs/stagehand_concise.png)
 
@@ -88,7 +94,7 @@ You can adjust the `stagehand` function using the `with` function, as seen in th
 |dramatis-personae|boolean|true|Whether to create a Dramatis Personae, a list of all characters, at the beginning of the document|
 |props|boolean|true|Whether to include the list of props at the end of the document|
 |todos|boolean|false|Whether "TODO"-notes are visible and listed at the end of the document|
-|speaker-layout|"fancy"/"concise"|"fancy"|Which layout to use, see above|
+|speaker-layout|"blockage"/"fancy"/"concise"|"blockage"|Which layout to use, see above|
 |speaker-function|function|smallcaps|Which function to use on character names. You could, for example, use `upper` to transform all characters to capital letters.|
 |break-size|int|900|After how many characters a paragraph should be allowed to split at a page break. Paragraphs below this limit will always stay together.|
 |parentheses-mean-stage-directions|boolean|true|If true, using round parentheses in markup mode will mark text as an inline stage direction.|
@@ -111,7 +117,29 @@ Dictionaries like this can be added for custom localization strings:
     dramatis-personae-title: "Dramatis Personae",
     act-title: "Act",
     scene-title: "Scene",
-    appendix-title: "Appendix"
+    appendix-title: "Appendix",
+    already-on-stage: "Already on stage"
   )
 ```
 You only need to specify the keys you want to change, the rest will automatically fall back.
+
+### Optional: descriptions
+Add additional information to roles for the dramatis personae.
+Example:
+```typ
+#descriptions(
+(name: "Romeo", group: "Montague", desc: "Some guy", actor: "Robert Robertson"),
+(name: "Juliet", group: "Capulet", desc: "Some girl", actor: "Jenny Johnson"),
+(name: "Benvolio", group: "Montague"),
+(name: "Friat Laurence", actor: "Ferdinand Ford")
+)
+```
+All fields are optional. In the dramatis personae, roles will be grouped according to their "group", and sorted in order of appearance within
+this group. Characters that show up in the play, but are not mentioned in this function, will still be portrayed, but without a description, and actor and together with the other "ungrouped" characters.
+
+### Optional: Stage presence management
+If you want to, you can use some helper functions to make sure people are only speaking when they are currently on stage. This can be useful in the editing process.
+Use the `#enter`, `#exit` and `#exeunt-all` functions with a character name to mark that a character enters or exits the stage. If a character speaks, but is not
+on stage, if he enters while he is already on stage or if he exits while he is not on stage, a warning will be added as a "todo" note.
+
+As long as you never use one of those functions, the mechanic is disabled and you don't have to worry about it.
