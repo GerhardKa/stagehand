@@ -1,46 +1,10 @@
 #let _description-state = state("description-state", ().to-dict() )
 
-#let on-stage = state("on-stage", ().to-dict())
-
-
-
-#let stage-direction(blocked: true, body) = {
-  if blocked {
-    align(left, box(width: 90%)[
-      #block(spacing: (0.0em))[
-        #align(left)[
-          #par(justify: true, spacing: 0.0em)[
-            #h(10em)#body #label("_stage-direction")
-            ]
-          ]
-        ]
-      ]
-    )
-  } else {
-    [#body #label("_stage-direction")]
-  }
-}
-
-#let currently-on-stage() = context[
-  #stage-direction[
-  Bereits auf der Bühne:
-  #{on-stage.get().pairs()
-    .filter(pair => pair.at(1))
-    .map(pair => pair.at(0))
-    .join(", ", last: " und ", default: "Niemand.")}
-    \
-    \
-  ]
-]
-
-#let descriptions(..roles) = {
-  let all-descriptions = ().to-dict()
-  for role in roles.pos() {
-    let name = role.at("name").replace(" ", sym.space.nobreak)
-    all-descriptions.insert(name, role)
-  }
-  _description-state.update(all-descriptions)
-}
+#let _on-stage = state("_on-stage", ().to-dict())
+#let _theme = state("_stagehand-theme", none)
+#let _blockage-indent = state("stagehand-blockage-indent", none)
+#let _speaker-function = state("stagehand-speaker-function", none)
+#let _using-presence = state("stagehand-presence", false)
 
 #let to-string(it) = {
   if it == none {
@@ -61,14 +25,95 @@
   }
 }
 
-#let longest-speaker() = {
+#let centered(body) = align(center, par(hanging-indent: 0pt, body))
+
+#let todo(body) = [#body<todo>]
+
+#let enter(role: auto, body) = {
+  _using-presence.update(true)
+  if role == auto {
+    role = body
+  }
+  role = to-string(role).replace(" ", sym.space.nobreak)
+  context{
+  if _on-stage.get().at(role, default: false) {
+    todo[#role is already on stage when entering.]
+  }}
+  _on-stage.update(it => {
+    let c = it.pairs().to-dict()
+    c.insert(role, true)
+    return c
+  })
+  [#metadata(role)<silent_speaker>]
+  smallcaps(body)
+}
+
+#let exit(role: auto, body) =  {
+  _using-presence.update(true)
+  if role == auto {
+    role = body
+  }
+  role = to-string(role).replace(" ", sym.space.nobreak)
+  context{
+  if not on-stage.get().at(role, default: false) {
+    todo[#role is not on stage when exiting.]
+  }}
+  on-stage.update(it => {
+    let c = it.pairs().to-dict()
+    c.insert(role, false)
+    return c
+  })
+  smallcaps(body)
+}
+
+#let exeunt-all() = {
+  _using-presence.update(true)
+  on-stage.update((:))
+}
+
+#let longest-speaker() = context{
   query(selector(<speaker>))
     .map(s => to-string(s))
     .fold("", (longest, current) =>
       if current.len() > longest.len() { current } else { longest }
     )
-    
+
 }
+
+#let stage-direction(blocked: true, body) = context {
+  let indent-width = calc.min((measure(
+        _speaker-function.get()([#longest-speaker():])
+      ).width + 1em).to-absolute(), _blockage-indent.get().to-absolute())
+
+  if blocked {
+    align(if _theme.get() == "blockage" {left} else {center}, box(width: if _theme.get() == "blockage" {90%} else {70%})[
+      #block(spacing: (0.0em))[
+        #align(left)[
+          #par(justify: true, spacing: 0.0em)[
+            #context{if _theme.get() == "blockage"  {h(indent-width)}}
+            #body #label("_stage-direction")
+            ]
+          ]
+        ]
+      ]
+    )
+  } else {
+    [#body #label("_stage-direction")]
+  }
+}
+
+
+
+#let descriptions(..roles) = {
+  let all-descriptions = ().to-dict()
+  for role in roles.pos() {
+    let name = role.at("name").replace(" ", sym.space.nobreak)
+    all-descriptions.insert(name, role)
+  }
+  _description-state.update(all-descriptions)
+}
+
+
 
 #let stagehand(
   lang: "en",
@@ -107,6 +152,11 @@
     type(stage-direction-color) == color,
     message: "Stage direction color must be of type 'color' "
   )
+  assert(type(speaker-function) == function,
+    message: "Speaker function must be a function")
+  _theme.update(speaker-layout)
+  _blockage-indent.update(blockage-indent)
+  _speaker-function.update(_ => speaker-function)
 
   let title-case(string) = {
     return string.replace(
@@ -126,7 +176,8 @@
     dramatis-personae-title: "Dramatis Personae",
     act-title: "Act",
     scene-title: "Scene",
-    appendix-title: "Appendix"
+    appendix-title: "Appendix",
+    already-on-stage: "Already on stage",
   )
 
   let primary_dictionary = {
@@ -140,7 +191,8 @@
         dramatis-personae-title: "Figuren",
         act-title: "Akt",
         scene-title: "Szene",
-        appendix-title: "Anhang"
+        appendix-title: "Anhang",
+        already-on-stage: "Bereits auf der Bühne",
       )
     } else if lower(lang) == "it" {
       (
@@ -153,6 +205,7 @@
         act-title: "Atto",
         scene-title: "Scena",
         appendix-title: "Appendice",
+        already-on-stage: "Già sul palco"
       )
     } else if lower(lang) == "es" {
       (
@@ -165,6 +218,7 @@
         act-title: "Acto",
         scene-title: "Escena",
         appendix-title: "Apéndice",
+        already-on-stage: "Ya en el escenario"
       )
     } else if lower(lang) == "en" {
       fallback_dicionary
@@ -183,6 +237,21 @@
     } else {
       return fallback_dicionary.at(key)
     }
+  }
+
+  let currently-on-stage() = {if _using-presence.final() {
+    context[
+        #stage-direction[
+        #localization("already-on-stage")
+        #{_on-stage.get().pairs()
+          .filter(pair => pair.at(1))
+          .map(pair => pair.at(0))
+          .join(", ", last: " und ", default: "Niemand.")}
+          \
+          \
+        ]
+      ]
+    } else {none}
   }
 
   let pretty_print_heading(level, c) = {
@@ -281,7 +350,7 @@
                         .map(s => to-string(s))
                         .filter(s => s not in tagged-speakers)
                         .dedup()
-                      silent-speakers += on-stage.at(start_scene.location())
+                      silent-speakers += _on-stage.at(start_scene.location())
                         .pairs()
                         .filter(pair => pair.at(1))
                         .map(pair => pair.at(0))
@@ -321,7 +390,6 @@
 
   //TODO Nur unterstes Level outlinen
   //show heading.where(level:1): set heading(outlined: false)
-
 
 
   show <speaker>: it => {
@@ -369,7 +437,6 @@
     }
   }
 
-  //if parentheses-mean-stage-directions {
   show regex("\\([^)]+\\)"): it => {
     if parentheses-mean-stage-directions {
       stage-direction(blocked: false, it)
@@ -489,6 +556,14 @@
     }
   )
 
+  show heading.where(level: 2): it => {
+    let nums = counter(heading).get().at(1)
+    it
+    if (nums != 1 and _using-presence.final()) {
+      text(font-size, weight: "regular", currently-on-stage())
+    }
+  }
+
 
 
   set par(justify: true, linebreaks: "optimized",)
@@ -502,9 +577,16 @@
     block(breakable: characters > break-size)[#it]
   }
 
-  show align.where(alignment: center): set text(size:20pt)
 
   [#v(0pt)<start_of_play>]
+
+  show <tagged_speaker>: it => if _using-presence.final() {context {
+    for name in it.value {
+      if not _on-stage.get().at(name, default: false) {
+        todo[#name is not on stage.]
+      }
+    }
+  }}
 
   context {
     let indent-width = (measure(
@@ -600,4 +682,4 @@
 
 #let prop(body) = [#body<prop>]
 
-#let todo(body) = [#body<todo>]
+

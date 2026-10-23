@@ -2,7 +2,7 @@
 
 #descriptions(
   (name:"Alice", group:"Nerds", desc:"A Nerd called Alice", actor:"Andrea"),
-  (name:"Bob", group:"Jocks", desc:"A jock named Boris", actor:"Boris"),
+  (name:"Bob", group:"Jocks", desc:"A jock named Bob, played by Boris", actor:"Boris"),
   (name:"Cedric", group:"Nerds", desc:"Another Nerd", actor:"Celine")
 )
 
@@ -18,7 +18,8 @@
   props: true,
   todos: true,
 
-  speaker-layout:"fancy",
+  speaker-layout:"blockage",
+  blockage-indent: 5em,
   speaker-function: smallcaps,
   break-size: 900,
   parentheses-mean-stage-directions: true,
@@ -68,10 +69,19 @@ Please fasten your seatbelts.
 == A last scene
 #bob() There is so much more to do. #todo[But what exactly??] While editing, it can be useful to have these notes.
 #alice() They also show up at the end of the document, in their dedicated list. You can click on them, to go back here.
-#bob() There are many options to play around in the ```typ #show: theatre.with(...)
-``` block at the start of the page. Almost all of these options are set to their default values, so you can remove them if you want to. #todo[Change some default values]
+#bob() There are many options to play around in the `#show: theatre.with(...)` block at the start of the page. Almost all of these options are set to their default values, so you can remove them if you want to. #todo[Change some default values]
 == Or is there more?
-#s[Xaver]
-Ich bin auch hier
 #s[Cedric]
-Ich auch.
+I'm here too, and I will show up in the Dramatis personae
+#s[Xaver]
+Me too, but without a description, a group or an actor, because I was not mentioned in the `#descriptions` call. But just saying something is enough to be included.
+#s[Cedric]
+Tell us a little poem!
+#s[Xaver]
+#centered[
+Roses are red\
+Violets are blue\
+This text is centered\
+Juchu.
+]
+#s[Cedric] Good thing you used the `centered` function instead of pure Typst alignments, this works better in different themes.
